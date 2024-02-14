@@ -1,0 +1,16 @@
+{
+    "name": "s3-source-connector",
+    "config": {
+        "connector.class": "io.confluent.connect.s3.source.S3SourceConnector",
+        "tasks.max": "1",
+        "topics.dir": "",
+        "s3.bucket.name": "is459-tr",
+        "topic.regex.list": "test-topic:.*",
+        "mode": "GENERIC",
+        "format.class": "io.confluent.connect.s3.format.bytearray.ByteArrayFormat",
+        "confluent.topic.bootstrap.servers": "kafka.default.svc.cluster.local:9092",
+        "s3.region": "ap-southeast-1",
+        "aws.access.key.id": "",
+        "aws.secret.access.key": ""
+    }
+}
