@@ -7,8 +7,8 @@
         "s3.bucket.name": "is459-tr",
         "topic.regex.list": "test-topic:.*",
         "mode": "GENERIC",
-        "format.class": "io.confluent.connect.s3.format.bytearray.ByteArrayFormat",
-        "confluent.topic.bootstrap.servers": "kafka.default.svc.cluster.local:9092",
+        "format.class": "io.confluent.connect.s3.format.string.StringFormat",
+        "confluent.topic.bootstrap.servers": "kafka.is459.svc.cluster.local:9092",
         "s3.region": "ap-southeast-1",
         "aws.access.key.id": "",
         "aws.secret.access.key": ""
