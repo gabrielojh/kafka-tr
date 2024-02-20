@@ -4,12 +4,16 @@ go 1.22.0
 
 require (
 	github.com/joho/godotenv v1.5.1
-	github.com/loyalty-application/go-worker-node v0.0.0-20230406000148-4e2f72957f67
 	go.mongodb.org/mongo-driver v1.14.0
 )
 
 require (
-	github.com/confluentinc/confluent-kafka-go v1.9.2
+	github.com/google/go-cmp v0.5.6 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+)
+
+require (
+	github.com/confluentinc/confluent-kafka-go/v2 v2.3.0
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.15.14 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect

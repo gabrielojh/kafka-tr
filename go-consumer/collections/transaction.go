@@ -2,94 +2,141 @@ package collections
 
 import (
 	"context"
-	"log"
 	"time"
 
-	"github.com/loyalty-application/go-worker-node/config"
-	"github.com/loyalty-application/go-worker-node/models"
-
+	"github.com/gabrielojh/kafka-tr/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var transactionCollection *mongo.Collection = config.OpenCollection(config.Client, "transactions")
-var unprocessedCollection *mongo.Collection = config.OpenCollection(config.Client, "unprocessed")
+var TransactionCollection *mongo.Collection;
 
-func CreateTransactions(transactions models.TransactionList) (result interface{}, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+func RetrieveAllTransactions() (transactions []models.Transaction, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100 * time.Second)
 	defer cancel()
 
-	// convert from slice of struct to slice of interface
-	t := make([]interface{}, len(transactions.Transactions))
-	for i, v := range transactions.Transactions {
-		t[i] = v
-	}
-
-	// convert from slice of interface to mongo's bulkWrite model
-	models := make([]mongo.WriteModel, 0)
-	for _, doc := range t {
-		models = append(models, mongo.NewInsertOneModel().SetDocument(doc))
-	}
-	
-	// If an error occurs during the processing of one of the write operations, MongoDB
-	// will continue to process remaining write operations in the list.
-	bulkWriteOptions := options.BulkWrite().SetOrdered(false)
-	result, err = transactionCollection.BulkWrite(ctx, models, bulkWriteOptions)
-    if err != nil && !mongo.IsDuplicateKeyError(err) {
-        log.Println(err.Error())
-		return result, err
-    }
-
-	return result, err
-}
-
-func RetrieveCardValuesFromTransaction(cardId string) (result float64, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	pipeline := []bson.M{
-		{"$match": bson.M{"card_id": cardId}},
-		{"$group": bson.M{
-			"_id": nil,
-			"totalPoints": bson.M{"$sum": "$points"},
-			"totalMiles": bson.M{"$sum": "$miles"},
-			"totalCashback": bson.M{"$sum": "$cash_back"},
-		}},
-	}
-	
-	cursor, err := transactionCollection.Aggregate(ctx, pipeline)
+	options := options.Find().SetSort(bson.M{"Name": 1})
+	cursor, err := TransactionCollection.Find(ctx, bson.M{}, options)
 	if err != nil {
-		log.Println(err.Error())
-		return result, err
-	}
-	
-	var temp struct {
-		TotalPoints   float64 `bson:"totalPoints"`
-		TotalMiles    float64 `bson:"totalMiles"`
-		TotalCashback float64 `bson:"totalCashback"`
+		panic(err)
 	}
 
-	if cursor.Next(context.Background()) {
-        
-		if err = cursor.Decode(&temp); err != nil {
-			log.Println(err.Error())
-			return result, err
-		}
-	}
+	defer cursor.Close(ctx)
+	err = cursor.All(ctx, &transactions)
 
-	result += temp.TotalCashback + temp.TotalMiles + temp.TotalPoints
-
-	return result, err
+	return transactions, err
 }
 
-func DeleteUnprocessedByTransactionId(transactionIdList []string) (result *mongo.DeleteResult, err error) {
+func RetrieveSpecificTransactionByNameAndCategory(name string, category string) (result *models.Transaction, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	filter := bson.M{"transaction_id": bson.M{"$in": transactionIdList}}
+	filter := bson.D{{Key: "name", Value: name}, {Key: "category", Value: category}}
 
-	result, err = unprocessedCollection.DeleteMany(ctx, filter)
+	result = &models.Transaction{}
+	err = TransactionCollection.FindOne(ctx, filter).Decode(result)
+	if err == mongo.ErrNoDocuments {
+		return nil, err
+	}
 
 	return result, err
 }
+
+func CreateTransaction(transaction models.Transaction) (result *mongo.InsertOneResult, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	result, err = TransactionCollection.InsertOne(ctx, transaction)
+
+	return result, err
+}
+
+func UpdateTransaction(transaction models.Transaction) (result *mongo.UpdateResult, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"name": transaction.Name, "category": transaction.Category}
+	update := bson.M{"$set": transaction}
+	result, err = TransactionCollection.UpdateOne(ctx, filter, update)
+
+	return result, err
+}
+
+// func CreateTransactions(transactions models.TransactionList) (result interface{}, err error) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+// 	defer cancel()
+
+// 	// convert from slice of struct to slice of interface
+// 	t := make([]interface{}, len(transactions.Transactions))
+// 	for i, v := range transactions.Transactions {
+// 		t[i] = v
+// 	}
+
+// 	// convert from slice of interface to mongo's bulkWrite model
+// 	models := make([]mongo.WriteModel, 0)
+// 	for _, doc := range t {
+// 		models = append(models, mongo.NewInsertOneModel().SetDocument(doc))
+// 	}
+	
+// 	// If an error occurs during the processing of one of the write operations, MongoDB
+// 	// will continue to process remaining write operations in the list.
+// 	bulkWriteOptions := options.BulkWrite().SetOrdered(false)
+// 	result, err = TransactionCollection.BulkWrite(ctx, models, bulkWriteOptions)
+//     if err != nil && !mongo.IsDuplicateKeyError(err) {
+//         log.Println(err.Error())
+// 		return result, err
+//     }
+
+// 	return result, err
+// }
+
+// func RetrieveCardValuesFromTransaction(cardId string) (result float64, err error) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+
+// 	pipeline := []bson.M{
+// 		{"$match": bson.M{"card_id": cardId}},
+// 		{"$group": bson.M{
+// 			"_id": nil,
+// 			"totalPoints": bson.M{"$sum": "$points"},
+// 			"totalMiles": bson.M{"$sum": "$miles"},
+// 			"totalCashback": bson.M{"$sum": "$cash_back"},
+// 		}},
+// 	}
+	
+// 	cursor, err := TransactionCollection.Aggregate(ctx, pipeline)
+// 	if err != nil {
+// 		log.Println(err.Error())
+// 		return result, err
+// 	}
+	
+// 	var temp struct {
+// 		TotalPoints   float64 `bson:"totalPoints"`
+// 		TotalMiles    float64 `bson:"totalMiles"`
+// 		TotalCashback float64 `bson:"totalCashback"`
+// 	}
+
+// 	if cursor.Next(context.Background()) {
+        
+// 		if err = cursor.Decode(&temp); err != nil {
+// 			log.Println(err.Error())
+// 			return result, err
+// 		}
+// 	}
+
+// 	result += temp.TotalCashback + temp.TotalMiles + temp.TotalPoints
+
+// 	return result, err
+// }
+
+// func DeleteUnprocessedByTransactionId(transactionIdList []string) (result *mongo.DeleteResult, err error) {
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+
+// 	filter := bson.M{"transaction_id": bson.M{"$in": transactionIdList}}
+
+// 	result, err = unprocessedCollection.DeleteMany(ctx, filter)
+
+// 	return result, err
+// }

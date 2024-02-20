@@ -5,7 +5,7 @@ load("ext://namespace", "namespace_inject", "namespace_create")
 # Set up Minikube Docker environment
 local('eval $(minikube docker-env)')
 
-namespace = "is459"
+namespace = "default"
 registry = "local"
 # registry = "registry.gitlab.com/fyp6033103"
 
@@ -37,9 +37,9 @@ namespace_create(namespace)
 # k8s_yaml(namespace_inject(read_file("./secrets.yml"), "challenge"))
 
 # Deploy Kafka, Kafka UI, Kafka Connect, MongoDB
-# k8s_yaml(namespace_inject(helm("./k8s/kafka-charts/", name="kafka"), namespace ), allow_duplicates=False)
-# k8s_yaml(namespace_inject(helm("./k8s/kafka-connect-charts/", name="kafka-connect"), namespace ), allow_duplicates=False)
-# k8s_yaml(namespace_inject(helm("./k8s/kafka-ui-charts/", name="kafka-ui"), namespace ), allow_duplicates=False)
+k8s_yaml(namespace_inject(helm("./k8s/kafka-charts/", name="kafka"), namespace ), allow_duplicates=False)
+k8s_yaml(namespace_inject(helm("./k8s/kafka-connect-charts/", name="kafka-connect"), namespace ), allow_duplicates=False)
+k8s_yaml(namespace_inject(helm("./k8s/kafka-ui-charts/", name="kafka-ui"), namespace ), allow_duplicates=False)
 k8s_yaml(namespace_inject(helm("./k8s/mongodb-charts/", name="mongodb-db"), namespace ), allow_duplicates=False)
 
 

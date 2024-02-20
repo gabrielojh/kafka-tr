@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gabrielojh/kafka-tr/collections"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,7 +18,7 @@ var clientInstance *mongo.Client
 var clientInstanceError error
 var mongoOnce sync.Once
 
-func GetDBInstance() (clientInstance *mongo.Client, clientInstanceError error) {
+func GetDBInstance() (*mongo.Client, error) {
 
 	mongoOnce.Do(func() {
 		// Load environment variables
@@ -36,106 +38,48 @@ func GetDBInstance() (clientInstance *mongo.Client, clientInstanceError error) {
 		serverAPI := options.ServerAPI(options.ServerAPIVersion1)
 		opts := options.Client().ApplyURI(conn).SetServerAPIOptions(serverAPI)
 		// Create a new client and connect to the server
-		client, err := mongo.Connect(ctx, opts)
-		if err != nil {
-			panic(err)
+		clientInstance, clientInstanceError = mongo.Connect(ctx, opts)
+		if clientInstanceError != nil {
+			panic(clientInstanceError)
 		}
-
-		defer func() {
-			if err = client.Disconnect(context.TODO()); err != nil {
-				panic(err)
-			}
-		}()
 
 		// Send a ping to confirm a successful connection
 		log.Println("Pinging your deployment...")
-		if err := client.Ping(context.Background(), nil); err != nil{
+		if clientInstanceError = clientInstance.Ping(context.Background(), nil); clientInstanceError != nil {
 			log.Println("Can't connect")
-			panic(err)
+			panic(clientInstanceError)
 		}
 		log.Println("Pinged your deployment. You successfully connected to MongoDB!")
-		// // initialise indexes
-		// InitIndexes(client)
-		// log.Println("Success!")
+
+		initIndexes(clientInstance)
+
+		collections.TransactionCollection = OpenCollection("transactions")
 	})
+
 	return clientInstance, clientInstanceError
 }
 
-// func InitIndexes(client *mongo.Client) {
+func initIndexes(client *mongo.Client) {
 
-// 	// transactions_transactions_-1 index
-// 	transactionCollection := OpenCollection(client, "transactions")
+	// transactions_transactions_-1 index
+	transactionCollection := OpenCollection("transactions")
 
-// 	transactionIndexModel := mongo.IndexModel{
-// 		Keys:    bson.D{{Key: "transaction_id", Value: -1}},
-// 		Options: options.Index().SetUnique(true),
-// 	}
-// 	transactionIndexCreated, err := transactionCollection.Indexes().CreateOne(context.Background(), transactionIndexModel)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+	transactionIndexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "name", Value: -1}, {Key: "category", Value: -1}},
+		Options: options.Index().SetUnique(true),
+	}
+	transactionIndexCreated, err := transactionCollection.Indexes().CreateOne(context.Background(), transactionIndexModel)
+	if err != nil {
+		log.Println("Error creating index")
+		log.Fatal(err)
+	}
 
-// 	// unprocessed_unprocessed-1 index
-// 	unprocessedCollection := OpenCollection(client, "unprocessed")
+	log.Printf("Created Transaction Index %s\n", transactionIndexCreated)
+}
 
-// 	unprocessedIndexModel := mongo.IndexModel{
-// 		Keys:    bson.D{{Key: "transaction_id", Value: -1}},
-// 		Options: options.Index().SetUnique(true),
-// 	}
-// 	unprocessedIndexCreated, err := unprocessedCollection.Indexes().CreateOne(context.Background(), unprocessedIndexModel)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
+func OpenCollection(collectionName string) *mongo.Collection {
 
-// 	// campaigns_campaigns_-1 index
-// 	campaignCollection := OpenCollection(client, "campaigns")
+	var collection *mongo.Collection = clientInstance.Database("is459").Collection(collectionName)
 
-// 	campaignIndexModel := mongo.IndexModel{
-// 		Keys:    bson.D{{Key: "campaign_id", Value: -1}},
-// 		Options: options.Index().SetUnique(true),
-// 	}
-
-// 	campaignIndexCreated, err := campaignCollection.Indexes().CreateOne(context.Background(), campaignIndexModel)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	// cards_cards_-1 index
-// 	cardCollection := OpenCollection(client, "cards")
-
-// 	cardIndexModel := mongo.IndexModel{
-// 		Keys:    bson.D{{Key: "card_id", Value: -1}},
-// 		Options: options.Index().SetUnique(true),
-// 	}
-
-// 	cardIndexCreated, err := cardCollection.Indexes().CreateOne(context.Background(), cardIndexModel)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	// user_users_-1 index
-// 	userCollection := OpenCollection(client, "users")
-
-// 	userIndexModel := mongo.IndexModel{
-// 		Keys: bson.D{{Key: "user_id", Value: -1}},
-// 		Options: options.Index().SetUnique(true),
-// 	}
-
-// 	userIndexCreated, err := userCollection.Indexes().CreateOne(context.Background(), userIndexModel)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	log.Printf("Created Transaction Index %s\n", transactionIndexCreated)
-// 	log.Printf("Created Unprocessed Index %s\n", unprocessedIndexCreated)
-// 	log.Printf("Created Campaign Index %s\n", campaignIndexCreated)
-// 	log.Printf("Created Card Index %s\n", cardIndexCreated)
-// 	log.Printf("Created User Index %s\n", userIndexCreated)
-// }
-
-// func OpenCollection(client *mongo.Client, collectionName string) *mongo.Collection {
-
-// 	var collection *mongo.Collection = client.Database("loyalty").Collection(collectionName)
-
-// 	return collection
-// }
+	return collection
+}
