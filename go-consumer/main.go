@@ -16,14 +16,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// "encoding/json"
-// "log"
-// "time"
-
 func main() {
 	config.InitEnvironment()
 
-	// db.InitDB()
 	client, err := config.GetDBInstance()
 	if err != nil {
 		log.Fatalf("Failed to get MongoDB client: %v", err)
@@ -73,10 +68,9 @@ func processTransactions(consumer *kafka.Consumer) {
 				continue
 			}
 
-
 			name := temp[1]
 			credit, err := strconv.Atoi(temp[2])
-			if err != nil{
+			if err != nil {
 				log.Fatalln("Error converting credit to int: ", err)
 			}
 			category := temp[3]
@@ -94,14 +88,14 @@ func processTransactions(consumer *kafka.Consumer) {
 				}
 				log.Println("Creating transaction", *transaction)
 				_, err := collections.CreateTransaction(*transaction)
-				if err != nil{
+				if err != nil {
 					log.Fatalf("Error creating transaction: %v", err)
 				}
 			} else {
 				log.Println("Updating transaction", *transaction)
 				transaction.Credit += credit
 				_, err := collections.UpdateTransaction(*transaction)
-				if err != nil{
+				if err != nil {
 					log.Fatalf("Error updating transaction: %v", err)
 				}
 			}

@@ -1,0 +1,16 @@
+{
+  "name": "gcs-source-connector",
+  "config": {
+    "connector.class": "io.confluent.connect.gcs.source.GcsSourceConnector",
+    "tasks.max": "1",
+    "gcs.bucket.name": "my-gcs-bucket",
+    "gcs.credentials.path": "/path/to/gcs-credentials.json",
+    "file.format": "json",
+    "topic.prefix": "gcs-data-",
+    "poll.interval.ms": "5000",
+    "gcs.folder.name": "data-folder/",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false"
+  }
+}
